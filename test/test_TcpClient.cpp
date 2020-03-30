@@ -2,6 +2,7 @@
 #include "PortManager.hpp"
 #include "TcpClient.hpp"
 #include "TcpConnection.hpp"
+#include "Timer.hpp"
 #include <stdio.h>
 #include <string.h>
 
@@ -42,6 +43,7 @@ public:
 	bool UserOnNewTcpConnection(TcpConnection *connection) override;
 	void UserOnTcpConnectionClosed(TcpConnection *connection) override;
 };
+TcpClientTest *tcpClientTest = new TcpClientTest();
 
 void TcpClientTest::UserOnTcpConnectionAlloc(TcpConnection **connection) {
 	MyTcpConnection *newTcpConnection = new MyTcpConnection((size_t)(4096));
@@ -58,12 +60,25 @@ bool TcpClientTest::UserOnNewTcpConnection(TcpConnection *connection) {
 void TcpClientTest::UserOnTcpConnectionClosed(TcpConnection *connection) {
 
 }
+
+class TimerTest : public Timer::Listener {
+	virtual void OnTimer(Timer *timer);
+
+};
+
+
+void TimerTest::OnTimer(Timer* timer) {
+	tcpClientTest->Close();
+}
+
 int main() {
 	DepLibUV::ClassInit();
-
-	TcpClientTest *tcpClientTest = new TcpClientTest();
 	std::string ip = "127.0.0.1";
 	tcpClientTest->Connect(ip, 8000);
+	TimerTest *timerTest = new TimerTest();
+	Timer *timer = new Timer(timerTest);
+	timer->Start(5000, 0);
+	//close the socket after 5s
 	DepLibUV::RunLoop();
 
 	return 0;
