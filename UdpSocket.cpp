@@ -1,10 +1,9 @@
-#define MS_CLASS "UdpSocket"
-// #define MS_LOG_DEV_LEVEL 3
+#define UV_CLASS "UdpSocket"
+// #define UV_LOG_DEV_LEVEL 3
 
 #include "UdpSocket.hpp"
 #include "Logger.hpp"
 #include "LibUVErrors.hpp"
-#include "Utils.hpp"
 #include <cstring> // std::memcpy()
 
 /* Static. */
@@ -64,7 +63,7 @@ UdpSocket::UdpSocket(uv_udp_t *uvHandle) :
 		uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 				static_cast<uv_close_cb>(onClose));
 
-		MS_THROW_ERROR("uv_udp_recv_start() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_udp_recv_start() failed: %s", uv_strerror(err));
 	}
 
 	// Set local address.
@@ -72,7 +71,7 @@ UdpSocket::UdpSocket(uv_udp_t *uvHandle) :
 		uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 				static_cast<uv_close_cb>(onClose));
 
-		MS_THROW_ERROR("error setting local IP and port");
+		UV_THROW_ERROR("error setting local IP and port");
 	}
 }
 
@@ -96,18 +95,18 @@ void UdpSocket::Close() {
 	int err = uv_udp_recv_stop(this->uvHandle);
 
 	if (err != 0)
-		MS_ABORT("uv_udp_recv_stop() failed: %s", uv_strerror(err));
+		UV_ABORT("uv_udp_recv_stop() failed: %s", uv_strerror(err));
 
 	uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 			static_cast<uv_close_cb>(onClose));
 }
 
 void UdpSocket::Dump() const {
-	MS_DUMP("<UdpSocket>");
-	MS_DUMP("  localIp   : %s", this->localIp.c_str());
-	MS_DUMP("  localPort : %" PRIu16, static_cast<uint16_t>(this->localPort));
-	MS_DUMP("  closed    : %s", !this->closed ? "open" : "closed");
-	MS_DUMP("</UdpSocket>");
+	UV_DUMP("<UdpSocket>");
+	UV_DUMP("  localIp   : %s", this->localIp.c_str());
+	UV_DUMP("  localPort : %d", static_cast<uint16_t>(this->localPort));
+	UV_DUMP("  closed    : %s", !this->closed ? "open" : "closed");
+	UV_DUMP("</UdpSocket>");
 }
 
 void UdpSocket::Send(const uint8_t *data, size_t len,
@@ -148,7 +147,7 @@ void UdpSocket::Send(const uint8_t *data, size_t len,
 		return;
 	}
 	if (sent >= 0) {
-		MS_WARN_DEV("datagram truncated (just %d of %zu bytes were sent)", sent,
+		UV_WARN_DEV("datagram truncated (just %d of %zu bytes were sent)", sent,
 				len);
 
 		// Update sent bytes.
@@ -164,7 +163,7 @@ void UdpSocket::Send(const uint8_t *data, size_t len,
 	}
 	// Error,
 	if (sent != UV_EAGAIN) {
-		MS_WARN_DEV("uv_udp_try_send() failed: %s", uv_strerror(sent));
+		UV_WARN_DEV("uv_udp_try_send() failed: %s", uv_strerror(sent));
 
 		if (cb) {
 			(*cb)(false);
@@ -175,7 +174,7 @@ void UdpSocket::Send(const uint8_t *data, size_t len,
 		return;
 	}
 
-	// MS_DEBUG_DEV("could not send the datagram at first time, using uv_udp_send() now");
+	// UV_DEBUG_DEV("could not send the datagram at first time, using uv_udp_send() now");
 
 	auto *sendData = new UvSendData(len);
 
@@ -191,7 +190,7 @@ void UdpSocket::Send(const uint8_t *data, size_t len,
 	if (err != 0) {
 		// NOTE: uv_udp_send() returns error if a wrong INET family is given
 		// (IPv6 destination on a IPv4 binded socket), so be ready.
-		MS_WARN_DEV("uv_udp_send() failed: %s", uv_strerror(err));
+		UV_WARN_DEV("uv_udp_send() failed: %s", uv_strerror(err));
 
 		if (cb)
 			(*cb)(false);
@@ -213,18 +212,62 @@ bool UdpSocket::SetLocalAddress() {
 			reinterpret_cast<struct sockaddr*>(&this->localAddr), &len);
 
 	if (err != 0) {
-		MS_ERROR("uv_udp_getsockname() failed: %s", uv_strerror(err));
+		UV_ERROR("uv_udp_getsockname() failed: %s", uv_strerror(err));
 
 		return false;
 	}
 
 	int family;
 
-	Utils::IP::GetAddressInfo(
+	GetAddressInfo(
 			reinterpret_cast<const struct sockaddr*>(&this->localAddr), family,
 			this->localIp, this->localPort);
 
 	return true;
+}
+
+
+void UdpSocket::GetAddressInfo(const struct sockaddr* addr, int& family, std::string& ip, uint16_t& port) {
+
+	char ipBuffer[INET6_ADDRSTRLEN] = { 0 };
+	int err;
+
+	switch (addr->sa_family)
+	{
+		case AF_INET:
+		{
+			err = uv_inet_ntop(
+				AF_INET, std::addressof(reinterpret_cast<const struct sockaddr_in*>(addr)->sin_addr), ipBuffer, sizeof(ipBuffer));
+
+			if (err)
+				UV_ABORT("uv_inet_ntop() failed: %s", uv_strerror(err));
+
+			port = static_cast<uint16_t>(ntohs(reinterpret_cast<const struct sockaddr_in*>(addr)->sin_port));
+
+			break;
+		}
+
+		case AF_INET6:
+		{
+			err = uv_inet_ntop(
+				AF_INET6, std::addressof(reinterpret_cast<const struct sockaddr_in6*>(addr)->sin6_addr), ipBuffer, sizeof(ipBuffer));
+
+			if (err)
+				UV_ABORT("uv_inet_ntop() failed: %s", uv_strerror(err));
+
+			port = static_cast<uint16_t>(ntohs(reinterpret_cast<const struct sockaddr_in6*>(addr)->sin6_port));
+
+			break;
+		}
+
+		default:
+		{
+			UV_ABORT("unknown network family: %d", static_cast<int>(addr->sa_family));
+		}
+	}
+
+	family = addr->sa_family;
+	ip.assign(ipBuffer);
 }
 
 inline void UdpSocket::OnUvRecvAlloc(size_t /*suggestedSize*/, uv_buf_t *buf) {
@@ -245,7 +288,7 @@ inline void UdpSocket::OnUvRecv(ssize_t nread, const uv_buf_t *buf,
 
 	// Check flags.
 	if ((flags & UV_UDP_PARTIAL) != 0u) {
-		MS_ERROR(
+		UV_ERROR(
 				"received datagram was truncated due to insufficient buffer, ignoring it");
 
 		return;
@@ -262,7 +305,7 @@ inline void UdpSocket::OnUvRecv(ssize_t nread, const uv_buf_t *buf,
 	}
 	// Some error.
 	else {
-		MS_DEBUG_DEV("read error: %s", uv_strerror(nread));
+		UV_DEBUG_DEV("read error: %s", uv_strerror(nread));
 	}
 }
 
@@ -272,8 +315,8 @@ inline void UdpSocket::OnUvSend(int status, UdpSocket::onSendCallback *cb) {
 		if (cb)
 			(*cb)(true);
 	} else {
-#if MS_LOG_DEV_LEVEL == 3
-		MS_DEBUG_DEV("send error: %s", uv_strerror(status));
+#if UV_LOG_DEV_LEVEL == 3
+		UV_DEBUG_DEV("send error: %s", uv_strerror(status));
 #endif
 
 		if (cb)

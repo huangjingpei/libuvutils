@@ -4,6 +4,7 @@
 #include "SignalsHandler.hpp"
 #include "DepLibUV.hpp"
 #include "LibUVErrors.hpp"
+#include "uv.h"
 
 /* Static methods for UV callbacks. */
 

@@ -186,7 +186,6 @@ public:
 #define UV_DEBUG_TAG(tag, desc, ...) \
 	do \
 	{ \
-		if (Settings::configuration.logLevel == LogLevel::LOG_DEBUG && _UV_TAG_ENABLED(tag)) \
 		{ \
 			int loggerWritten = std::snprintf(Logger::buffer, Logger::bufferSize, "D" _UV_LOG_STR_DESC desc, _UV_LOG_ARG, ##__VA_ARGS__); \
 			Logger::channel->SendLog(Logger::buffer, loggerWritten); \
@@ -197,7 +196,6 @@ public:
 #define UV_DEBUG_TAG_STD(tag, desc, ...) \
 	do \
 	{ \
-		if (Settings::configuration.logLevel == LogLevel::LOG_DEBUG && _UV_TAG_ENABLED(tag)) \
 		{ \
 			std::fprintf(stdout, _UV_LOG_STR_DESC desc _UV_LOG_SEPARATOR_CHAR_STD, _UV_LOG_ARG, ##__VA_ARGS__); \
 			std::fflush(stdout); \
@@ -208,7 +206,6 @@ public:
 #define UV_WARN_TAG(tag, desc, ...) \
 	do \
 	{ \
-		if (Settings::configuration.logLevel >= LogLevel::LOG_WARN && _UV_TAG_ENABLED(tag)) \
 		{ \
 			int loggerWritten = std::snprintf(Logger::buffer, Logger::bufferSize, "W" _UV_LOG_STR_DESC desc, _UV_LOG_ARG, ##__VA_ARGS__); \
 			Logger::channel->SendLog(Logger::buffer, loggerWritten); \
@@ -389,7 +386,6 @@ public:
 #define UV_ERROR(desc, ...) \
 	do \
 	{ \
-		if (Settings::configuration.logLevel >= LogLevel::LOG_ERROR || UV_LOG_DEV_LEVEL >= 1) \
 		{ \
 			int loggerWritten = std::snprintf(Logger::buffer, Logger::bufferSize, "E" _UV_LOG_STR_DESC desc, _UV_LOG_ARG, ##__VA_ARGS__); \
 			Logger::channel->SendLog(Logger::buffer, loggerWritten); \
@@ -400,7 +396,6 @@ public:
 #define UV_ERROR_STD(desc, ...) \
 	do \
 	{ \
-		if (Settings::configuration.logLevel >= LogLevel::LOG_ERROR || UV_LOG_DEV_LEVEL >= 1) \
 		{ \
 			std::fprintf(stderr, _UV_LOG_STR_DESC desc _UV_LOG_SEPARATOR_CHAR_STD, _UV_LOG_ARG, ##__VA_ARGS__); \
 			std::fflush(stderr); \
@@ -422,7 +417,7 @@ public:
 	{ \
 		UV_ABORT("failed assertion `%s': " desc, #condition, ##__VA_ARGS__); \
 	}
-
+#define UV_LOG_STD
 #ifdef UV_LOG_STD
 	#undef UV_TRACE
 	#define UV_TRACE UV_TRACE_STD
@@ -443,7 +438,7 @@ public:
 	#undef UV_DUMP_DATA
 	#define UV_DUMP_DATA UV_DUMP_DATA_STD
 	#undef UV_ERROR
-	#define UV_ERROR UV_ERROR_STD
+#define UV_ERROR UV_ERROR_STD
 #endif
 
 // clang-format on

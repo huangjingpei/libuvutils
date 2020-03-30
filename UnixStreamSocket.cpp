@@ -3,11 +3,12 @@
  * Channel.
  */
 
-#define MS_CLASS "UnixStreamSocket"
-// #define MS_LOG_DEV_LEVEL 3
+#define UV_CLASS "UnixStreamSocket"
+// #define UV_LOG_DEV_LEVEL 3
 #include <uv.h>
 #include "UnixStreamSocket.hpp"
 #include "DepLibUV.hpp"
+#include "Logger.hpp"
 #include <cstring> // std::memcpy()
 
 /* Static methods for UV callbacks. */
@@ -72,7 +73,7 @@ UnixStreamSocket::UnixStreamSocket(int fd, size_t bufferSize,
 		delete this->uvHandle;
 		this->uvHandle = nullptr;
 
-		MS_THROW_ERROR_STD("uv_pipe_init() failed: %s", uv_strerror(err));
+		UV_ERROR("uv_pipe_init() failed: %s", uv_strerror(err));
 	}
 
 	err = uv_pipe_open(this->uvHandle, fd);
@@ -81,7 +82,7 @@ UnixStreamSocket::UnixStreamSocket(int fd, size_t bufferSize,
 		uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 				static_cast<uv_close_cb>(onClose));
 
-		MS_THROW_ERROR_STD("uv_pipe_open() failed: %s", uv_strerror(err));
+		UV_ERROR("uv_pipe_open() failed: %s", uv_strerror(err));
 	}
 
 	if (this->role == UnixStreamSocket::Role::CONSUMER) {
@@ -94,7 +95,7 @@ UnixStreamSocket::UnixStreamSocket(int fd, size_t bufferSize,
 			uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 					static_cast<uv_close_cb>(onClose));
 
-			MS_THROW_ERROR_STD("uv_read_start() failed: %s", uv_strerror(err));
+			UV_ERROR("uv_read_start() failed: %s", uv_strerror(err));
 		}
 	}
 
@@ -126,7 +127,7 @@ void UnixStreamSocket::Close() {
 		err = uv_read_stop(reinterpret_cast<uv_stream_t*>(this->uvHandle));
 
 		if (err != 0)
-			MS_ABORT("uv_read_stop() failed: %s", uv_strerror(err));
+			UV_ABORT("uv_read_stop() failed: %s", uv_strerror(err));
 	}
 
 	// If there is no error and the peer didn't close its pipe side then close gracefully.
@@ -138,7 +139,7 @@ void UnixStreamSocket::Close() {
 				static_cast<uv_shutdown_cb>(onShutdown));
 
 		if (err != 0)
-			MS_ABORT("uv_shutdown() failed: %s", uv_strerror(err));
+			UV_ABORT("uv_shutdown() failed: %s", uv_strerror(err));
 	}
 	// Otherwise directly close the socket.
 	else {
@@ -173,7 +174,7 @@ void UnixStreamSocket::Write(const uint8_t *data, size_t len) {
 	}
 	// Error. Should not happen.
 	else if (written < 0) {
-		MS_ERROR_STD("uv_try_write() failed, closing the socket: %s",
+		UV_ERROR_STD("uv_try_write() failed, closing the socket: %s",
 				uv_strerror(written));
 
 		Close();
@@ -197,7 +198,7 @@ void UnixStreamSocket::Write(const uint8_t *data, size_t len) {
 			static_cast<uv_write_cb>(onWrite));
 
 	if (err != 0) {
-		MS_ERROR_STD("uv_write() failed: %s", uv_strerror(err));
+		UV_ERROR_STD("uv_write() failed: %s", uv_strerror(err));
 
 		// Delete the UvSendData struct.
 		delete writeData;
@@ -220,7 +221,7 @@ inline void UnixStreamSocket::OnUvReadAlloc(size_t /*suggestedSize*/,
 	} else {
 		buf->len = 0;
 
-		MS_ERROR_STD("no available space in the buffer");
+		UV_ERROR_STD("no available space in the buffer");
 	}
 }
 
@@ -249,7 +250,7 @@ inline void UnixStreamSocket::OnUvRead(ssize_t nread, const uv_buf_t* /*buf*/) {
 	}
 	// Some error.
 	else {
-		MS_ERROR_STD("read error, closing the pipe: %s", uv_strerror(nread));
+		UV_ERROR_STD("read error, closing the pipe: %s", uv_strerror(nread));
 
 		this->hasError = true;
 
@@ -265,7 +266,7 @@ inline void UnixStreamSocket::OnUvWriteError(int error) {
 	if (error != UV_EPIPE && error != UV_ENOTCONN)
 		this->hasError = true;
 
-	MS_ERROR_STD("write error, closing the pipe: %s", uv_strerror(error));
+	UV_ERROR_STD("write error, closing the pipe: %s", uv_strerror(error));
 
 	Close();
 

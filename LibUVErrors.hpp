@@ -4,6 +4,7 @@
 
 #include <cstdio> // std::snprintf()
 #include <stdexcept>
+#include "Logger.hpp"
 
 class LibUVError : public std::runtime_error
 {
@@ -17,15 +18,15 @@ inline LibUVError::LibUVError(const char* description) : std::runtime_error(desc
 {
 }
 
-class MediaSoupTypeError : public LibUVError
+class LibUVTypeError : public LibUVError
 {
 public:
-	explicit MediaSoupTypeError(const char* description);
+	explicit LibUVTypeError(const char* description);
 };
 
 /* Inline methods. */
 
-inline MediaSoupTypeError::MediaSoupTypeError(const char* description) : LibUVError(description)
+inline LibUVTypeError::LibUVTypeError(const char* description) : LibUVError(description)
 {
 }
 
@@ -55,23 +56,23 @@ inline MediaSoupTypeError::MediaSoupTypeError(const char* description) : LibUVEr
 #define UV_THROW_TYPE_ERROR(desc, ...) \
 	do \
 	{ \
-		UV_ERROR("throwing MediaSoupTypeError: " desc, ##__VA_ARGS__); \
+		UV_ERROR("throwing LibUVTypeError: " desc, ##__VA_ARGS__); \
 		\
 		static char buffer[2000]; \
 		\
 		std::snprintf(buffer, 2000, desc, ##__VA_ARGS__); \
-		throw MediaSoupTypeError(buffer); \
+		throw LibUVTypeError(buffer); \
 	} while (false)
 
 #define UV_THROW_TYPE_ERROR_STD(desc, ...) \
 	do \
 	{ \
-		UV_ERROR_STD("throwing MediaSoupTypeError: " desc, ##__VA_ARGS__); \
+		UV_ERROR_STD("throwing LibUVTypeError: " desc, ##__VA_ARGS__); \
 		\
 		static char buffer[2000]; \
 		\
 		std::snprintf(buffer, 2000, desc, ##__VA_ARGS__); \
-		throw MediaSoupTypeError(buffer); \
+		throw LibUVTypeError(buffer); \
 	} while (false)
 // clang-format on
 

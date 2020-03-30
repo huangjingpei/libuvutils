@@ -1,10 +1,11 @@
-#define MS_CLASS "Timer"
-// #define MS_LOG_DEV_LEVEL 3
+#define UV_CLASS "Timer"
+// #define UV_LOG_DEV_LEVEL 3
 
 #include "Timer.hpp"
 #include "DepLibUV.hpp"
 #include "Logger.hpp"
 #include "LibUVErrors.hpp"
+#include <uv.h>
 
 /* Static methods for UV callbacks. */
 
@@ -31,7 +32,7 @@ Timer::Timer(Listener *listener) :
 		delete this->uvHandle;
 		this->uvHandle = nullptr;
 
-		MS_THROW_ERROR("uv_timer_init() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_timer_init() failed: %s", uv_strerror(err));
 	}
 }
 
@@ -58,7 +59,7 @@ void Timer::Start(uint64_t timeout, uint64_t repeat) {
 
 
 	if (this->closed)
-		MS_THROW_ERROR("closed");
+		UV_THROW_ERROR("closed");
 
 	this->timeout = timeout;
 	this->repeat = repeat;
@@ -70,26 +71,26 @@ void Timer::Start(uint64_t timeout, uint64_t repeat) {
 			timeout, repeat);
 
 	if (err != 0)
-		MS_THROW_ERROR("uv_timer_start() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_timer_start() failed: %s", uv_strerror(err));
 }
 
 void Timer::Stop() {
 
 
 	if (this->closed)
-		MS_THROW_ERROR("closed");
+		UV_THROW_ERROR("closed");
 
 	int err = uv_timer_stop(this->uvHandle);
 
 	if (err != 0)
-		MS_THROW_ERROR("uv_timer_stop() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_timer_stop() failed: %s", uv_strerror(err));
 }
 
 void Timer::Reset() {
 
 
 	if (this->closed)
-		MS_THROW_ERROR("closed");
+		UV_THROW_ERROR("closed");
 
 	if (uv_is_active(reinterpret_cast<uv_handle_t*>(this->uvHandle)) == 0)
 		return;
@@ -101,14 +102,14 @@ void Timer::Reset() {
 			this->repeat, this->repeat);
 
 	if (err != 0)
-		MS_THROW_ERROR("uv_timer_start() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_timer_start() failed: %s", uv_strerror(err));
 }
 
 void Timer::Restart() {
 
 
 	if (this->closed)
-		MS_THROW_ERROR("closed");
+		UV_THROW_ERROR("closed");
 
 	if (uv_is_active(reinterpret_cast<uv_handle_t*>(this->uvHandle)) != 0)
 		Stop();
@@ -117,7 +118,7 @@ void Timer::Restart() {
 			this->timeout, this->repeat);
 
 	if (err != 0)
-		MS_THROW_ERROR("uv_timer_start() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_timer_start() failed: %s", uv_strerror(err));
 }
 
 inline void Timer::OnUvTimer() {

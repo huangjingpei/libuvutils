@@ -1,5 +1,5 @@
-#ifndef UV_MUTEXT_HPP
-#define UV_MUTEXT_HPP
+#ifndef UV_MUTEX_HPP
+#define UV_MUTEX_HPP
 
 #define HAVE_PTHREADS
 #include <stdint.h>
@@ -101,7 +101,7 @@ inline int UVMutex::tryLock() {
 
 typedef UVMutex::Autolock AutoMutex;
 
-#endif // UV_MUTEXT_HPP
+#endif // UV_MUTEX_HPP
 
 /*********************************************************************************************************
  /*

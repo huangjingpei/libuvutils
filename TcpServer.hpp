@@ -25,8 +25,12 @@ public:
 	uint16_t GetLocalPort() const;
 	size_t GetNumConnections() const;
 
+protected:
+	void AcceptTcpConnection(TcpConnection* connection);
+
 private:
 	bool SetLocalAddress();
+	void GetAddressInfo(const struct sockaddr* addr, int& family, std::string& ip, uint16_t& port);
 
 	/* Pure virtual methods that must be implemented by the subclass. */
 protected:

@@ -1,7 +1,6 @@
 #ifndef MS_TIMER_HPP
 #define MS_TIMER_HPP
-
-#include "common.hpp"
+#include <stdint.h>
 #include <uv.h>
 
 class Timer {

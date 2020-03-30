@@ -1,12 +1,12 @@
 #ifndef MS_TCP_CONNECTION_HPP
 #define MS_TCP_CONNECTION_HPP
 
-#include "common.hpp"
 #include <uv.h>
 #include <string>
-
+#include <functional>
 class TcpConnection {
 protected:
+
 	using onSendCallback = const std::function<void(bool sent)>;
 
 public:
@@ -69,7 +69,7 @@ public:
 
 private:
 	bool SetPeerAddress();
-
+	void GetAddressInfo(const struct sockaddr *addr, int &family, std::string &ip, uint16_t &port);
 	/* Callbacks fired by UV events. */
 public:
 	void OnUvReadAlloc(size_t suggestedSize, uv_buf_t *buf);

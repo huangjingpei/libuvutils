@@ -1,0 +1,6 @@
+
+Makefile.*
+libuvutils.so
+objs/*.o
+libuv
+

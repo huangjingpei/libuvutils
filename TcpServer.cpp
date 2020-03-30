@@ -1,10 +1,10 @@
-#define MS_CLASS "TcpServer"
-// #define MS_LOG_DEV_LEVEL 3
+#define UV_CLASS "TcpServer"
+// #define UV_LOG_DEV_LEVEL 3
 
 #include "TcpServer.hpp"
 #include "Logger.hpp"
 #include "LibUVErrors.hpp"
-#include "Utils.hpp"
+
 
 /* Static methods for UV callbacks. */
 
@@ -39,7 +39,7 @@ TcpServer::TcpServer(uv_tcp_t *uvHandle, int backlog) :
 		uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 				static_cast<uv_close_cb>(onClose));
 
-		MS_THROW_ERROR("uv_listen() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_listen() failed: %s", uv_strerror(err));
 	}
 
 	// Set local address.
@@ -47,7 +47,7 @@ TcpServer::TcpServer(uv_tcp_t *uvHandle, int backlog) :
 		uv_close(reinterpret_cast<uv_handle_t*>(this->uvHandle),
 				static_cast<uv_close_cb>(onClose));
 
-		MS_THROW_ERROR("error setting local IP and port");
+		UV_THROW_ERROR("error setting local IP and port");
 	}
 }
 
@@ -69,7 +69,7 @@ void TcpServer::Close() {
 	// Tell the UV handle that the TcpServer has been closed.
 	this->uvHandle->data = nullptr;
 
-	MS_DEBUG_DEV("closing %zu active connections", this->connections.size());
+	UV_DEBUG_DEV("closing %zu active connections", this->connections.size());
 
 	for (auto *connection : this->connections) {
 		delete connection;
@@ -80,14 +80,56 @@ void TcpServer::Close() {
 }
 
 void TcpServer::Dump() const {
-	MS_DUMP("<TcpServer>");
-	MS_DUMP(
-			"  [TCP, local:%s :%" PRIu16 ", status:%s, connections:%zu]",
+	UV_DUMP("<TcpServer>");
+	UV_DUMP(
+			"  [TCP, local:%s :%d, status:%s, connections:%zu]",
 			this->localIp.c_str(),
 			static_cast<uint16_t>(this->localPort),
 			(!this->closed) ? "open" : "closed",
 			this->connections.size());
-	MS_DUMP("</TcpServer>");
+	UV_DUMP("</TcpServer>");
+}
+
+void TcpServer::AcceptTcpConnection(TcpConnection* connection)
+{
+	UV_TRACE();
+
+	UV_ASSERT(connection != nullptr, "TcpConnection pointer was not allocated by the user");
+
+	try
+	{
+		connection->Setup(this, &(this->localAddr), this->localIp, this->localPort);
+	}
+	catch (const LibUVError& error)
+	{
+		delete connection;
+
+		return;
+	}
+
+	// Accept the connection.
+	int err = uv_accept(
+	  reinterpret_cast<uv_stream_t*>(this->uvHandle),
+	  reinterpret_cast<uv_stream_t*>(connection->GetUvHandle()));
+
+	if (err != 0)
+		UV_ABORT("uv_accept() failed: %s", uv_strerror(err));
+
+	// Start receiving data.
+	try
+	{
+		// NOTE: This may throw.
+		connection->Start();
+	}
+	catch (const LibUVError& error)
+	{
+		delete connection;
+
+		return;
+	}
+
+	// Store it.
+	this->connections.insert(connection);
 }
 
 bool TcpServer::SetLocalAddress() {
@@ -100,18 +142,62 @@ bool TcpServer::SetLocalAddress() {
 			reinterpret_cast<struct sockaddr*>(&this->localAddr), &len);
 
 	if (err != 0) {
-		MS_ERROR("uv_tcp_getsockname() failed: %s", uv_strerror(err));
+		UV_ERROR("uv_tcp_getsockname() failed: %s", uv_strerror(err));
 
 		return false;
 	}
 
 	int family;
 
-	Utils::IP::GetAddressInfo(
+	GetAddressInfo(
 			reinterpret_cast<const struct sockaddr*>(&this->localAddr), family,
 			this->localIp, this->localPort);
 
 	return true;
+}
+
+void TcpServer::GetAddressInfo(const struct sockaddr* addr, int& family, std::string& ip, uint16_t& port)
+{
+
+	char ipBuffer[INET6_ADDRSTRLEN] = { 0 };
+	int err;
+
+	switch (addr->sa_family)
+	{
+		case AF_INET:
+		{
+			err = uv_inet_ntop(
+				AF_INET, std::addressof(reinterpret_cast<const struct sockaddr_in*>(addr)->sin_addr), ipBuffer, sizeof(ipBuffer));
+
+			if (err)
+				UV_ABORT("uv_inet_ntop() failed: %s", uv_strerror(err));
+
+			port = static_cast<uint16_t>(ntohs(reinterpret_cast<const struct sockaddr_in*>(addr)->sin_port));
+
+			break;
+		}
+
+		case AF_INET6:
+		{
+			err = uv_inet_ntop(
+				AF_INET6, std::addressof(reinterpret_cast<const struct sockaddr_in6*>(addr)->sin6_addr), ipBuffer, sizeof(ipBuffer));
+
+			if (err)
+				UV_ABORT("uv_inet_ntop() failed: %s", uv_strerror(err));
+
+			port = static_cast<uint16_t>(ntohs(reinterpret_cast<const struct sockaddr_in6*>(addr)->sin6_port));
+
+			break;
+		}
+
+		default:
+		{
+			UV_ABORT("unknown network family: %d", static_cast<int>(addr->sa_family));
+		}
+	}
+
+	family = addr->sa_family;
+	ip.assign(ipBuffer);
 }
 
 inline void TcpServer::OnUvConnection(int status) {
@@ -123,7 +209,7 @@ inline void TcpServer::OnUvConnection(int status) {
 	int err;
 
 	if (status != 0) {
-		MS_ERROR("error while receiving a new TCP connection: %s",
+		UV_ERROR("error while receiving a new TCP connection: %s",
 				uv_strerror(status));
 
 		return;
@@ -133,13 +219,13 @@ inline void TcpServer::OnUvConnection(int status) {
 	TcpConnection *connection = nullptr;
 	UserOnTcpConnectionAlloc(&connection);
 
-	MS_ASSERT(connection != nullptr,
+	UV_ASSERT(connection != nullptr,
 			"TcpConnection pointer was not allocated by the user");
 
 	try {
 		connection->Setup(this, &(this->localAddr), this->localIp,
 				this->localPort);
-	} catch (const MediaSoupError &error) {
+	} catch (const LibUVError &error) {
 		delete connection;
 
 		return;
@@ -150,13 +236,13 @@ inline void TcpServer::OnUvConnection(int status) {
 			reinterpret_cast<uv_stream_t*>(connection->GetUvHandle()));
 
 	if (err != 0)
-		MS_ABORT("uv_accept() failed: %s", uv_strerror(err));
+		UV_ABORT("uv_accept() failed: %s", uv_strerror(err));
 
 	// Start receiving data.
 	try {
 		// NOTE: This may throw.
 		connection->Start();
-	} catch (const MediaSoupError &error) {
+	} catch (const LibUVError &error) {
 		delete connection;
 
 		return;
@@ -172,7 +258,7 @@ inline void TcpServer::OnUvConnection(int status) {
 inline void TcpServer::OnTcpConnectionClosed(TcpConnection *connection) {
 
 
-	MS_DEBUG_DEV("TCP connection closed");
+	UV_DEBUG_DEV("TCP connection closed");
 
 	// Remove the TcpConnection from the set.
 	this->connections.erase(connection);

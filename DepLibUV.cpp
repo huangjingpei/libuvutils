@@ -4,6 +4,7 @@
 #include "DepLibUV.hpp"
 #include "Logger.hpp"
 #include <cstdlib> // std::abort()
+#include "uv.h"
 
 /* Static variables. */
 
@@ -19,7 +20,7 @@ void DepLibUV::ClassInit() {
 	int err = uv_loop_init(DepLibUV::loop);
 
 	if (err != 0) {
-		UV_THROW_ERROR("libuv initialization failed");
+		UV_ERROR("libuv initialization failed", loop);
 	}
 }
 

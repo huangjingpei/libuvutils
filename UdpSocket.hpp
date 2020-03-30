@@ -1,10 +1,10 @@
 #ifndef MS_UDP_SOCKET_HPP
 #define MS_UDP_SOCKET_HPP
 
-#include "common.hpp"
+
 #include <uv.h>
 #include <string>
-
+#include <functional>
 class UdpSocket {
 protected:
 	using onSendCallback = const std::function<void(bool sent)>;
@@ -52,7 +52,7 @@ public:
 
 private:
 	bool SetLocalAddress();
-
+	void GetAddressInfo(const struct sockaddr* addr, int& family, std::string& ip, uint16_t& port);
 	/* Callbacks fired by UV events. */
 public:
 	void OnUvRecvAlloc(size_t suggestedSize, uv_buf_t *buf);

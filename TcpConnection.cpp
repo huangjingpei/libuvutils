@@ -1,10 +1,9 @@
-#define MS_CLASS "TcpConnection"
-// #define MS_LOG_DEV_LEVEL 3
+#define UV_CLASS "TcpConnection"
+// #define UV_LOG_DEV_LEVEL 3
 
 #include "TcpConnection.hpp"
 #include "DepLibUV.hpp"
 #include "LibUVErrors.hpp"
-#include "Utils.hpp"
 #include <cstring> // std::memcpy()
 
 /* Static methods for UV callbacks. */
@@ -88,7 +87,7 @@ void TcpConnection::Close() {
 	err = uv_read_stop(reinterpret_cast<uv_stream_t*>(this->uvHandle));
 
 	if (err != 0)
-		MS_ABORT("uv_read_stop() failed: %s", uv_strerror(err));
+		UV_ABORT("uv_read_stop() failed: %s", uv_strerror(err));
 
 	// If there is no error and the peer didn't close its connection side then close gracefully.
 	if (!this->hasError && !this->isClosedByPeer) {
@@ -100,7 +99,7 @@ void TcpConnection::Close() {
 				static_cast<uv_shutdown_cb>(onShutdown));
 
 		if (err != 0)
-			MS_ABORT("uv_shutdown() failed: %s", uv_strerror(err));
+			UV_ABORT("uv_shutdown() failed: %s", uv_strerror(err));
 	}
 	// Otherwise directly close the socket.
 	else {
@@ -110,13 +109,20 @@ void TcpConnection::Close() {
 }
 
 void TcpConnection::Dump() const {
-	MS_DUMP("<TcpConnection>");
-	MS_DUMP("  localIp    : %s", this->localIp.c_str());
-	MS_DUMP("  localPort  : %" PRIu16, static_cast<uint16_t>(this->localPort));
-	MS_DUMP("  remoteIp   : %s", this->peerIp.c_str());
-	MS_DUMP("  remotePort : %" PRIu16, static_cast<uint16_t>(this->peerPort));
-	MS_DUMP("  closed     : %s", !this->closed ? "open" : "closed");
-	MS_DUMP("</TcpConnection>");
+	UV_DUMP("<TcpConnection>")
+	;
+	UV_DUMP("  localIp    : %s", this->localIp.c_str())
+	;
+	UV_DUMP("  localPort  : %d", static_cast<uint16_t>(this->localPort))
+	;
+	UV_DUMP("  remoteIp   : %s", this->peerIp.c_str())
+	;
+	UV_DUMP("  remotePort : %d", static_cast<uint16_t>(this->peerPort))
+	;
+	UV_DUMP("  closed     : %s", !this->closed ? "open" : "closed")
+	;
+	UV_DUMP("</TcpConnection>")
+	;
 }
 
 void TcpConnection::Setup(Listener *listener,
@@ -130,7 +136,7 @@ void TcpConnection::Setup(Listener *listener,
 		delete this->uvHandle;
 		this->uvHandle = nullptr;
 
-		MS_THROW_ERROR("uv_tcp_init() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_tcp_init() failed: %s", uv_strerror(err));
 	}
 
 	// Set the listener.
@@ -151,11 +157,11 @@ void TcpConnection::Start() {
 			static_cast<uv_alloc_cb>(onAlloc), static_cast<uv_read_cb>(onRead));
 
 	if (err != 0)
-		MS_THROW_ERROR("uv_read_start() failed: %s", uv_strerror(err));
+		UV_THROW_ERROR("uv_read_start() failed: %s", uv_strerror(err));
 
 	// Get the peer address.
 	if (!SetPeerAddress())
-		MS_THROW_ERROR("error setting peer IP and port");
+		UV_THROW_ERROR("error setting peer IP and port");
 }
 
 void TcpConnection::Write(const uint8_t *data, size_t len,
@@ -209,7 +215,7 @@ void TcpConnection::Write(const uint8_t *data, size_t len,
 	}
 	// Error. Should not happen.
 	else if (written < 0) {
-		MS_WARN_DEV("uv_try_write() failed, closing the connection: %s",
+		UV_WARN_DEV("uv_try_write() failed, closing the connection: %s",
 				uv_strerror(written));
 
 		if (cb) {
@@ -226,7 +232,7 @@ void TcpConnection::Write(const uint8_t *data, size_t len,
 		return;
 	}
 
-	// MS_DEBUG_DEV(
+	// UV_DEBUG_DEV(
 	// 	"could just write %zu bytes (%zu given) at first time, using uv_write() now",
 	// 	static_cast<size_t>(written), len);
 
@@ -244,7 +250,7 @@ void TcpConnection::Write(const uint8_t *data, size_t len,
 			static_cast<uv_write_cb>(onWrite));
 
 	if (err != 0) {
-		MS_WARN_DEV("uv_write() failed: %s", uv_strerror(err));
+		UV_WARN_DEV("uv_write() failed: %s", uv_strerror(err));
 
 		if (cb)
 			(*cb)(false);
@@ -315,7 +321,7 @@ void TcpConnection::Write(const uint8_t *data1, size_t len1,
 	}
 	// Error. Should not happen.
 	else if (written < 0) {
-		MS_WARN_DEV("uv_try_write() failed, closing the connection: %s",
+		UV_WARN_DEV("uv_try_write() failed, closing the connection: %s",
 				uv_strerror(written));
 
 		if (cb) {
@@ -361,7 +367,7 @@ void TcpConnection::Write(const uint8_t *data1, size_t len1,
 			static_cast<uv_write_cb>(onWrite));
 
 	if (err != 0) {
-		MS_WARN_DEV("uv_write() failed: %s", uv_strerror(err));
+		UV_WARN_DEV("uv_write() failed: %s", uv_strerror(err));
 
 		if (cb)
 			(*cb)(false);
@@ -390,18 +396,60 @@ bool TcpConnection::SetPeerAddress() {
 			reinterpret_cast<struct sockaddr*>(&this->peerAddr), &len);
 
 	if (err != 0) {
-		MS_ERROR("uv_tcp_getpeername() failed: %s", uv_strerror(err));
+		UV_ERROR("uv_tcp_getpeername() failed: %s", uv_strerror(err))
+		;
 
 		return false;
 	}
 
 	int family;
 
-	Utils::IP::GetAddressInfo(
-			reinterpret_cast<const struct sockaddr*>(&this->peerAddr), family,
-			this->peerIp, this->peerPort);
+	GetAddressInfo(reinterpret_cast<const struct sockaddr*>(&this->peerAddr),
+			family, this->peerIp, this->peerPort);
 
 	return true;
+}
+
+void TcpConnection::GetAddressInfo(const struct sockaddr *addr, int &family, std::string &ip, uint16_t &port) {
+
+	char ipBuffer[INET6_ADDRSTRLEN] = { 0 };
+	int err;
+
+	switch (addr->sa_family) {
+	case AF_INET: {
+		err =uv_inet_ntop(AF_INET,std::addressof(reinterpret_cast<const struct sockaddr_in*>(addr)->sin_addr),
+						ipBuffer, sizeof(ipBuffer));
+
+		if (err)
+			UV_ABORT("uv_inet_ntop() failed: %s", uv_strerror(err));
+
+		port = static_cast<uint16_t>(ntohs(
+				reinterpret_cast<const struct sockaddr_in*>(addr)->sin_port));
+
+		break;
+	}
+
+	case AF_INET6: {
+		err = uv_inet_ntop(AF_INET6, std::addressof(reinterpret_cast<const struct sockaddr_in6*>(addr)->sin6_addr),
+						ipBuffer, sizeof(ipBuffer));
+
+		if (err)
+			UV_ABORT("uv_inet_ntop() failed: %s", uv_strerror(err));
+
+		port = static_cast<uint16_t>(ntohs(
+				reinterpret_cast<const struct sockaddr_in6*>(addr)->sin6_port));
+
+		break;
+	}
+
+	default: {
+		UV_ABORT("unknown network family: %d",
+				static_cast<int>(addr->sa_family));
+	}
+	}
+
+	family = addr->sa_family;
+	ip.assign(ipBuffer);
 }
 
 inline void TcpConnection::OnUvReadAlloc(size_t /*suggestedSize*/,
@@ -420,7 +468,7 @@ inline void TcpConnection::OnUvReadAlloc(size_t /*suggestedSize*/,
 	} else {
 		buf->len = 0;
 
-		MS_WARN_DEV("no available space in the buffer");
+		UV_WARN_DEV("no available space in the buffer");
 	}
 }
 
@@ -442,7 +490,7 @@ inline void TcpConnection::OnUvRead(ssize_t nread, const uv_buf_t* /*buf*/) {
 	}
 	// Client disconnected.
 	else if (nread == UV_EOF || nread == UV_ECONNRESET) {
-		MS_DEBUG_DEV("connection closed by peer, closing server side");
+		UV_DEBUG_DEV("connection closed by peer, closing server side");
 
 		this->isClosedByPeer = true;
 
@@ -454,7 +502,7 @@ inline void TcpConnection::OnUvRead(ssize_t nread, const uv_buf_t* /*buf*/) {
 	}
 	// Some error.
 	else {
-		MS_WARN_DEV("read error, closing the connection: %s",
+		UV_WARN_DEV("read error, closing the connection: %s",
 				uv_strerror(nread));
 
 		this->hasError = true;
@@ -477,7 +525,7 @@ inline void TcpConnection::OnUvWrite(int status,
 		if (status != UV_EPIPE && status != UV_ENOTCONN)
 			this->hasError = true;
 
-		MS_WARN_DEV("write error, closing the connection: %s",
+		UV_WARN_DEV("write error, closing the connection: %s",
 				uv_strerror(status));
 
 		if (cb)
