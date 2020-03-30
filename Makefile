@@ -1,4 +1,7 @@
+
+$(shell if [ ! -d "objs" ]; then mkdir -p objs; fi)
 DIR=.
+
 
 #动态库名以lib为前缀，以.so为后缀
 BIN=$(DIR)/libuvutils.so
