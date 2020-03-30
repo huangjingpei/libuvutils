@@ -1,5 +1,5 @@
-#ifndef MS_TCP_SERVER_HPP
-#define MS_TCP_SERVER_HPP
+#ifndef MS_TCP_CLIENT_HPP
+#define MS_TCP_CLIENT_HPP
 
 
 #include <uv.h>
@@ -8,25 +8,29 @@
 
 #include "TcpConnection.hpp"
 
-class TcpServer: public TcpConnection::Listener {
+class TcpClient: public TcpConnection::Listener {
 public:
 	/**
 	 * uvHandle must be an already initialized and binded uv_tcp_t pointer.
 	 */
-	TcpServer(uv_tcp_t *uvHandle, int backlog);
-	virtual ~TcpServer() override;
+	TcpClient();
+	virtual ~TcpClient() override;
 
 public:
+	int Connect(std::string &ip, uint16_t port, int family = AF_INET);
 	void Close();
 	virtual void Dump() const;
 	const struct sockaddr* GetLocalAddress() const;
 	int GetLocalFamily() const;
 	const std::string& GetLocalIp() const;
 	uint16_t GetLocalPort() const;
-	size_t GetNumConnections() const;
+	TcpConnection* GetConnection() const;
+
+protected:
+	void AcceptTcpConnection(TcpConnection* connection);
 
 private:
-	bool SetLocalAddress();
+	bool SetLocalAddress(struct sockaddr_storage* addr, int family = AF_INET);
 	void GetAddressInfo(const struct sockaddr* addr, int& family, std::string& ip, uint16_t& port);
 
 	/* Pure virtual methods that must be implemented by the subclass. */
@@ -49,33 +53,33 @@ protected:
 	uint16_t localPort { 0 };
 
 private:
-	// Allocated by this (may be passed by argument).
-	uv_tcp_t *uvHandle { nullptr };
+
 	// Others.
-	std::unordered_set<TcpConnection*> connections;
+	TcpConnection *connection { nullptr };
+	uv_connect_t req;
 	bool closed { false };
 };
 
 /* Inline methods. */
 
-inline size_t TcpServer::GetNumConnections() const {
-	return this->connections.size();
+inline TcpConnection* TcpClient::GetConnection() const {
+	return connection;
 }
 
-inline const struct sockaddr* TcpServer::GetLocalAddress() const {
+inline const struct sockaddr* TcpClient::GetLocalAddress() const {
 	return reinterpret_cast<const struct sockaddr*>(&this->localAddr);
 }
 
-inline int TcpServer::GetLocalFamily() const {
+inline int TcpClient::GetLocalFamily() const {
 	return reinterpret_cast<const struct sockaddr*>(&this->localAddr)->sa_family;
 }
 
-inline const std::string& TcpServer::GetLocalIp() const {
+inline const std::string& TcpClient::GetLocalIp() const {
 	return this->localIp;
 }
 
-inline uint16_t TcpServer::GetLocalPort() const {
+inline uint16_t TcpClient::GetLocalPort() const {
 	return this->localPort;
 }
 
-#endif
+#endif //MS_TCP_CLIENT_HPP

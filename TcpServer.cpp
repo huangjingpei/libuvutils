@@ -90,48 +90,6 @@ void TcpServer::Dump() const {
 	UV_DUMP("</TcpServer>");
 }
 
-void TcpServer::AcceptTcpConnection(TcpConnection* connection)
-{
-	UV_TRACE();
-
-	UV_ASSERT(connection != nullptr, "TcpConnection pointer was not allocated by the user");
-
-	try
-	{
-		connection->Setup(this, &(this->localAddr), this->localIp, this->localPort);
-	}
-	catch (const LibUVError& error)
-	{
-		delete connection;
-
-		return;
-	}
-
-	// Accept the connection.
-	int err = uv_accept(
-	  reinterpret_cast<uv_stream_t*>(this->uvHandle),
-	  reinterpret_cast<uv_stream_t*>(connection->GetUvHandle()));
-
-	if (err != 0)
-		UV_ABORT("uv_accept() failed: %s", uv_strerror(err));
-
-	// Start receiving data.
-	try
-	{
-		// NOTE: This may throw.
-		connection->Start();
-	}
-	catch (const LibUVError& error)
-	{
-		delete connection;
-
-		return;
-	}
-
-	// Store it.
-	this->connections.insert(connection);
-}
-
 bool TcpServer::SetLocalAddress() {
 
 

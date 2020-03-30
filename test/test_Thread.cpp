@@ -2,20 +2,16 @@
 #include "Timer.hpp"
 #include <unistd.h>
 
-class VTThreadTest : public UVThread::Runnable ,
-					public Timer::Listener
+class UVThreadTest : public UVThread::Runnable
 					{
 public:
 	virtual void run() override;
-	virtual void OnTimer(Timer *timer) override;
-
-
 private:
 
 	int maxRunSeconds {5};
 };
 
-void VTThreadTest::run() {
+void UVThreadTest::run() {
 	int count = 0;
 	while (1) {
 		printf("sleep %d s !\n", count);
@@ -26,13 +22,9 @@ void VTThreadTest::run() {
 	}
 }
 
-
-void VTThreadTest:: OnTimer(Timer *timer) {
-	printf("timer %#x\n", timer);
-}
 int main() {
 
-	auto *test = new VTThreadTest();
+	auto *test = new UVThreadTest();
 	auto *thread = new UVThread(test);
 	thread->Join();
 	printf("the thread is exited.\n");
