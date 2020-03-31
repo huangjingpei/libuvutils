@@ -1,8 +1,8 @@
-#include <UVThread.hpp>
 #include "Timer.hpp"
 #include <unistd.h>
+#include "../Thread.hpp"
 
-class UVThreadTest : public UVThread::Runnable
+class UVThreadTest : public Thread::Runnable
 					{
 public:
 	virtual void run() override;
@@ -25,7 +25,7 @@ void UVThreadTest::run() {
 int main() {
 
 	auto *test = new UVThreadTest();
-	auto *thread = new UVThread(test);
+	auto *thread = new Thread(test);
 	thread->Join();
 	printf("the thread is exited.\n");
 	return 0;

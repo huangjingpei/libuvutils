@@ -1,7 +1,7 @@
 #include <unistd.h>
-#include "Timer.hpp"
-#include "UVThread.hpp"
 
+#include "../Thread.hpp"
+#include "Timer.hpp"
 #include "DepLibUV.hpp"
 
 class TimerTest : public Timer::Listener {

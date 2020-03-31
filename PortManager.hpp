@@ -15,6 +15,7 @@ private:
 
 public:
 	static uv_udp_t* BindUdp(std::string &ip);
+	static uv_udp_t* BindUdp(std::string &ip, uint16_t port);
 	static uv_tcp_t* BindTcp(std::string &ip);
 	static uv_tcp_t* BindTcp(std::string &ip, uint16_t port);
 	static void UnbindUdp(std::string &ip, uint16_t port);
@@ -39,6 +40,10 @@ private:
 
 inline uv_udp_t* PortManager::BindUdp(std::string &ip) {
 	return reinterpret_cast<uv_udp_t*>(Bind(Transport::UDP, ip));
+}
+
+inline uv_udp_t* PortManager::BindUdp(std::string &ip, uint16_t port) {
+	return reinterpret_cast<uv_udp_t*>(Bind(Transport::UDP, ip, port));
 }
 
 inline uv_tcp_t* PortManager::BindTcp(std::string &ip) {

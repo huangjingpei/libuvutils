@@ -1,13 +1,14 @@
 #ifndef UV_THREAD_HPP
 #define UV_THREAD_HPP
+
 #define HAVE_PTHREADS
 
 #include <uv.h>
-#include "UVMutex.hpp"
+#include "Mutex.hpp"
 
 typedef void (*uv_thread_cb)(void* arg);
 
-class UVThread {
+class Thread {
 public:
 	class Runnable {
 	public:
@@ -18,8 +19,8 @@ public:
 		virtual void run() = 0;
 	};
 public:
-	UVThread(UVThread::Runnable *runnable);
-	~UVThread();
+	Thread(Thread::Runnable *runnable);
+	~Thread();
 	int GetId();
 	int Join();
 	int RequestExit();
@@ -29,51 +30,51 @@ friend class Runnable;
 private:
 	uv_thread_t thread;
 	volatile bool           exitPending;
-	UVMutex mutex {false};
+	Mutex mutex {false};
 private:
 
-	// A UVThread cannot be copied
-	UVThread(const UVThread&);
-	UVThread& operator =(const UVThread&);
+	// A Thread cannot be copied
+	Thread(const Thread&);
+	Thread& operator =(const Thread&);
 };
 
 #if defined(HAVE_PTHREADS)
 void ThreadRun(void *arg) {
-	UVThread::Runnable *runnable = (UVThread::Runnable *)arg;
+	Thread::Runnable *runnable = (Thread::Runnable *)arg;
 	runnable->run();
 }
 
-UVThread::UVThread(UVThread::Runnable *runnable) : exitPending(false) {
+Thread::Thread(Thread::Runnable *runnable) : exitPending(false) {
 	uv_thread_create(&thread, ThreadRun, (void*)runnable);
 }
 
-UVThread::~UVThread() {
+Thread::~Thread() {
 
 }
 
 
-int UVThread::GetId() {
+int Thread::GetId() {
 	return (int)uv_thread_self();
 }
 
-int UVThread::Join() {
+int Thread::Join() {
 	return uv_thread_join(&thread);
 }
 
-int UVThread::RequestExit() {
+int Thread::RequestExit() {
 	AutoMutex lock(mutex);
 	exitPending = true;
 	return 0;
 }
 
-int UVThread::RequestExitAndWait() {
+int Thread::RequestExitAndWait() {
 	AutoMutex lock(mutex);
 	exitPending = true;
 	Join();
 	return 0;
 }
 
-bool UVThread::IsQuit() {
+bool Thread::IsQuit() {
 	AutoMutex lock(mutex);
 	return (exitPending == true);
 }

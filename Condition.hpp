@@ -26,7 +26,7 @@
 #endif
 
 
-#include "UVMutex.hpp"
+#include "Mutex.hpp"
 
 /*
  * UVCondition variable class.  The implementation is system-dependent.
@@ -42,9 +42,9 @@ public:
     UVCondition();
     ~UVCondition();
     // Wait on the condition variable.  Lock the mutex before calling.
-    int wait(UVMutex& mutex);
+    int wait(Mutex& mutex);
     // same with relative timeout
-    int waitRelative(UVMutex& mutex, nsecs_t reltime);
+    int waitRelative(Mutex& mutex, nsecs_t reltime);
     // Signal the condition variable, allowing one thread to continue.
     void signal();
     // Signal the condition variable, allowing all threads to continue.
@@ -69,10 +69,10 @@ inline UVCondition::UVCondition() {
 inline UVCondition::~UVCondition() {
 	uv_cond_destroy(&cond);
 }
-inline int UVCondition::wait(UVMutex& mutex) {
+inline int UVCondition::wait(Mutex& mutex) {
     return -uv_cond_wait(&cond, &mutex.mutex);
 }
-inline int UVCondition::waitRelative(UVMutex& mutex, nsecs_t reltime) {
+inline int UVCondition::waitRelative(Mutex& mutex, nsecs_t reltime) {
 #if defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE)
     struct timespec ts;
     ts.tv_sec  = reltime/1000000000;

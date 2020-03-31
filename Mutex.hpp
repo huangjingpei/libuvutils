@@ -18,10 +18,10 @@ class UVCondition;
  * The mutex must be unlocked by the thread that locked it.  They are not
  * recursive, i.e. the same thread can't lock it multiple times.
  */
-class UVMutex {
+class Mutex {
 public:
-	UVMutex(bool recursive);
-	~UVMutex();
+	Mutex(bool recursive);
+	~Mutex();
 
 	// lock or unlock the mutex
 	void lock();
@@ -34,11 +34,11 @@ public:
 	// constructed and released when Autolock goes out of scope.
 	class Autolock {
 	public:
-		inline Autolock(UVMutex &mutex) :
+		inline Autolock(Mutex &mutex) :
 				lock(mutex) {
 			lock.lock();
 		}
-		inline Autolock(UVMutex *mutex) :
+		inline Autolock(Mutex *mutex) :
 				lock(*mutex) {
 			lock.lock();
 		}
@@ -46,14 +46,14 @@ public:
 			lock.unlock();
 		}
 	private:
-		UVMutex &lock;
+		Mutex &lock;
 	};
 
 private:
 	friend class AVCondition;
 	// A mutex cannot be copied
-	UVMutex(const UVMutex&);
-	UVMutex& operator =(const UVMutex&);
+	Mutex(const Mutex&);
+	Mutex& operator =(const Mutex&);
 
 #if defined(HAVE_PTHREADS)
 	uv_mutex_t mutex;
@@ -67,7 +67,7 @@ private:
 
 #if defined(HAVE_PTHREADS)
 
-inline UVMutex::UVMutex(bool recursive) {
+inline Mutex::Mutex(bool recursive) {
 	if (recursive == true) {
 		uv_mutex_init_recursive(&mutex);
 	} else {
@@ -76,16 +76,16 @@ inline UVMutex::UVMutex(bool recursive) {
 
 }
 
-inline UVMutex::~UVMutex() {
+inline Mutex::~Mutex() {
 	uv_mutex_destroy(&mutex);
 }
-inline void UVMutex::lock() {
+inline void Mutex::lock() {
 	uv_mutex_lock(&mutex);
 }
-inline void UVMutex::unlock() {
+inline void Mutex::unlock() {
 	uv_mutex_unlock(&mutex);
 }
-inline int UVMutex::tryLock() {
+inline int Mutex::tryLock() {
 	return uv_mutex_trylock(&mutex);
 }
 
@@ -99,12 +99,11 @@ inline int UVMutex::tryLock() {
  * mutex.
  */
 
-typedef UVMutex::Autolock AutoMutex;
+typedef Mutex::Autolock AutoMutex;
 
 #endif // UV_MUTEX_HPP
 
 /*********************************************************************************************************
- /*
  *  在线程实际运行过程中，我们经常需要多个线程保持同步。这时可以用互斥锁来完成任务；互斥锁的使用过程中，主要有pthread_mutex_init，pthread_mutex_destory，pthread_mutex_lock，pthread_mutex_unlock这几个函数以完成锁的初始化，锁的销毁，上锁和释放锁操作。
 
 
@@ -162,6 +161,5 @@ typedef UVMutex::Autolock AutoMutex;
  pthread_mutex_trylock()语义与pthread_mutex_lock()类似，不同的是在锁已经被占据时返回EBUSY而不是挂起等待
 
  原文链接：https://blog.csdn.net/zmxiangde_88/article/details/7998458
-
 
  */
