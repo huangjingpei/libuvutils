@@ -2,7 +2,7 @@ $(shell export LD_LIBRARY_PATH=`pwd`/..:$LD_LIBRARY_PATH)
 CC = gcc
 CXX = g++
 CFLAGS = -O -DDEBUG -I../include -I../
-LDFLAGS = -L../lib -L../ -luv -luvutils
+LDFLAGS = -L../lib -L../ -luv -luvutils -Wl,-rpath ../
 
 #wildcard 对 c文件进行展开
 SRCS = $(wildcard *.c) $(wildcard *.cpp) 
@@ -22,7 +22,7 @@ test_Thread : test_Thread.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 test_Timer :  test_Timer.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS)
-test_TcpServer :  test_TcpServer.o
+test_TcpServer :  test_TcpServer.o netstring.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 test_TcpClient :  test_TcpClient.o
 	$(CXX) $(CFLAGS) -o $@ $^ $(LDFLAGS)

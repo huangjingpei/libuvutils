@@ -5,7 +5,9 @@
 #include "Timer.hpp"
 #include <stdio.h>
 #include <string.h>
-
+#include <cmath>   // std::ceil()
+#include <cstdio>  // sprintf()
+#include <cstring> // std::memcpy(), std::memmove()
 
 class MyTcpConnection : public TcpConnection {
 
@@ -53,7 +55,27 @@ void TcpClientTest::UserOnTcpConnectionAlloc(TcpConnection **connection) {
 
 bool TcpClientTest::UserOnNewTcpConnection(TcpConnection *connection) {
 	printf("write !@!!!\n");
-	connection->Write((const uint8_t *)"hello", strlen((const char *)"hello")+1, NULL);
+	char buf[1024] = {0};
+	int len = 0;
+	char sendBuf[1024] = {0};
+	for(int i = 0; i < 100; i++) {
+		len += sprintf(buf+len, "%#x", i);
+	}
+	printf("len = %d\n", len);
+	size_t nsNumLen = static_cast<size_t>(std::ceil(std::log10(static_cast<double>(len) + 1)));
+	std::sprintf(sendBuf, "%zu:", len);
+	std::memcpy(sendBuf + nsNumLen + 1, buf, len);
+	sendBuf[nsNumLen + len + 1] = ',';
+	size_t nsLen = nsNumLen + len + 2;
+
+	connection->Write((const uint8_t *)sendBuf, nsLen, NULL);
+
+	connection->Write((const uint8_t *)sendBuf, nsLen, NULL);
+
+	connection->Write((const uint8_t *)sendBuf, nsLen, NULL);
+
+	connection->Write((const uint8_t *)sendBuf, nsLen, NULL);
+
 	return true;
 }
 
